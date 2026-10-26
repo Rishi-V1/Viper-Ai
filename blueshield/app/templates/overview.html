@@ -1,0 +1,147 @@
+{% extends "base.html" %}
+{% block title %}Overview — BlueShield{% endblock %}
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-3">
+  <h4 class="mb-0">Overview</h4>
+  <div class="form-check form-switch">
+    <input class="form-check-input" type="checkbox" id="auto-refresh" checked>
+    <label class="form-check-label small" for="auto-refresh">Auto-refresh (10s)</label>
+  </div>
+</div>
+
+<div id="loading" class="text-muted">Loading overview…</div>
+<div id="empty-state" class="alert alert-secondary d-none">
+  No events ingested yet. Go to <a href="/ingest">Ingest</a> and click "Load demo data" to see the dashboard populated.
+</div>
+
+<div id="content" class="d-none">
+  <div class="row g-3 mb-4">
+    <div class="col-6 col-md-3">
+      <div class="card text-center"><div class="card-body">
+        <div class="text-muted small">Total events</div>
+        <div class="fs-3 fw-semibold" id="kpi-total-events">0</div>
+      </div></div>
+    </div>
+    <div class="col-6 col-md-3">
+      <div class="card text-center"><div class="card-body">
+        <div class="text-muted small">Open incidents</div>
+        <div class="fs-3 fw-semibold" id="kpi-open-incidents">0</div>
+      </div></div>
+    </div>
+    <div class="col-6 col-md-3">
+      <div class="card text-center"><div class="card-body">
+        <div class="text-muted small">Critical incidents</div>
+        <div class="fs-3 fw-semibold severity-critical" id="kpi-critical-count">0</div>
+      </div></div>
+    </div>
+    <div class="col-6 col-md-3">
+      <div class="card text-center"><div class="card-body">
+        <div class="text-muted small">Last ingest</div>
+        <div class="fs-6 fw-semibold" id="kpi-last-ingest">—</div>
+      </div></div>
+    </div>
+  </div>
+
+  <div class="row g-3">
+    <div class="col-md-6">
+      <div class="card"><div class="card-body">
+        <h6 class="card-title">Events over time</h6>
+        <canvas id="chart-events-time" height="180"></canvas>
+      </div></div>
+    </div>
+    <div class="col-md-6">
+      <div class="card"><div class="card-body">
+        <h6 class="card-title">Incidents by severity</h6>
+        <canvas id="chart-incidents-severity" height="180"></canvas>
+      </div></div>
+    </div>
+    <div class="col-md-6">
+      <div class="card"><div class="card-body">
+        <h6 class="card-title">Top source IPs</h6>
+        <canvas id="chart-top-ips" height="180"></canvas>
+      </div></div>
+    </div>
+    <div class="col-md-6">
+      <div class="card"><div class="card-body">
+        <h6 class="card-title">Top alert categories</h6>
+        <canvas id="chart-top-categories" height="180"></canvas>
+      </div></div>
+    </div>
+  </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+const SEVERITY_COLORS = { Critical: "#ff5c5c", High: "#ff9f40", Low: "#ffd84d", Informational: "#4da3ff" };
+let charts = {};
+
+function destroyCharts() {
+  Object.values(charts).forEach((c) => c.destroy());
+  charts = {};
+}
+
+async function loadOverview() {
+  let stats;
+  try {
+    stats = await apiGet("/api/stats/overview");
+  } catch (e) {
+    showToast("Failed to load overview: " + e.message, true);
+    return;
+  }
+
+  document.getElementById("loading").classList.add("d-none");
+
+  if (stats.total_events === 0) {
+    document.getElementById("empty-state").classList.remove("d-none");
+    document.getElementById("content").classList.add("d-none");
+    return;
+  }
+  document.getElementById("empty-state").classList.add("d-none");
+  document.getElementById("content").classList.remove("d-none");
+
+  document.getElementById("kpi-total-events").textContent = stats.total_events;
+  document.getElementById("kpi-open-incidents").textContent = stats.open_incidents;
+  document.getElementById("kpi-critical-count").textContent = stats.critical_count;
+  document.getElementById("kpi-last-ingest").textContent = stats.last_ingest
+    ? new Date(stats.last_ingest).toLocaleString()
+    : "—";
+
+  destroyCharts();
+
+  charts.time = new Chart(document.getElementById("chart-events-time"), {
+    type: "line",
+    data: {
+      labels: stats.events_over_time.map((r) => r.bucket),
+      datasets: [{ label: "Events", data: stats.events_over_time.map((r) => r.count), borderColor: "#4da3ff", tension: 0.3 }],
+    },
+    options: { plugins: { legend: { display: false } } },
+  });
+
+  charts.severity = new Chart(document.getElementById("chart-incidents-severity"), {
+    type: "doughnut",
+    data: {
+      labels: stats.incidents_by_severity.map((r) => r.severity_label),
+      datasets: [{ data: stats.incidents_by_severity.map((r) => r.count), backgroundColor: stats.incidents_by_severity.map((r) => SEVERITY_COLORS[r.severity_label] || "#888") }],
+    },
+  });
+
+  charts.ips = new Chart(document.getElementById("chart-top-ips"), {
+    type: "bar",
+    data: { labels: stats.top_source_ips.map((r) => r.src_ip), datasets: [{ label: "Events", data: stats.top_source_ips.map((r) => r.count), backgroundColor: "#4da3ff" }] },
+    options: { plugins: { legend: { display: false } } },
+  });
+
+  charts.categories = new Chart(document.getElementById("chart-top-categories"), {
+    type: "bar",
+    data: { labels: stats.top_categories.map((r) => r.event_type), datasets: [{ label: "Events", data: stats.top_categories.map((r) => r.count), backgroundColor: "#ff9f40" }] },
+    options: { indexAxis: "y", plugins: { legend: { display: false } } },
+  });
+}
+
+loadOverview();
+setInterval(() => {
+  if (document.getElementById("auto-refresh").checked) loadOverview();
+}, 10000);
+</script>
+{% endblock %}

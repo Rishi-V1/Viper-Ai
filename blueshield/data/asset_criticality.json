@@ -1,0 +1,9 @@
+{
+  "lab-server-1": "high",
+  "lab-server-2": "medium",
+  "lab-server-3": "critical",
+  "lab-server-4": "low",
+  "lab-server-5": "medium",
+  "lab-server-6": "low",
+  "lab-server-7": "low"
+}

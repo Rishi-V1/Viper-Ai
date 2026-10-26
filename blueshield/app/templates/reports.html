@@ -1,0 +1,55 @@
+{% extends "base.html" %}
+{% block title %}Reports — BlueShield{% endblock %}
+{% block content %}
+<h4 class="mb-3">Reports</h4>
+<p class="small text-muted">Export an incident report with evidence, scoring rationale, MITRE references, and limitations.</p>
+
+<div id="loading" class="text-muted">Loading incidents…</div>
+<div id="empty-state" class="alert alert-secondary d-none">No incidents to report on yet.</div>
+
+<div class="table-responsive d-none" id="table-wrap">
+  <table class="table table-sm">
+    <thead><tr><th>Title</th><th>Severity</th><th>Status</th><th>Export</th></tr></thead>
+    <tbody id="rows"></tbody>
+  </table>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+async function loadIncidents() {
+  let data;
+  try {
+    data = await apiGet("/api/incidents");
+  } catch (e) {
+    showToast("Failed to load incidents: " + e.message, true);
+    return;
+  }
+  document.getElementById("loading").classList.add("d-none");
+
+  if (data.incidents.length === 0) {
+    document.getElementById("empty-state").classList.remove("d-none");
+    return;
+  }
+  document.getElementById("table-wrap").classList.remove("d-none");
+
+  const rows = document.getElementById("rows");
+  rows.innerHTML = "";
+  for (const inc of data.incidents) {
+    const tr = document.createElement("tr");
+    tr.innerHTML = `
+      <td><a href="/incidents/${inc.incident_id}">${escapeHtml(inc.title)}</a></td>
+      <td>${severityBadge(inc.severity_label)}</td>
+      <td>${statusBadge(inc.status)}</td>
+      <td>
+        <a class="btn btn-sm btn-outline-secondary" href="/api/incidents/${inc.incident_id}/report?fmt=markdown">Markdown</a>
+        <a class="btn btn-sm btn-outline-secondary" href="/api/incidents/${inc.incident_id}/report?fmt=html">HTML</a>
+      </td>
+    `;
+    rows.appendChild(tr);
+  }
+}
+
+loadIncidents();
+</script>
+{% endblock %}

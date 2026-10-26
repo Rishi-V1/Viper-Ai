@@ -1,0 +1,11 @@
+Oct 26 10:01:00 lab-server-1 sshd[1000]: Failed password for invalid user root from 192.0.2.10 port 53013 ssh2
+Oct 26 10:01:30 lab-server-1 sshd[1001]: Failed password for invalid user admin from 192.0.2.10 port 53014 ssh2
+Oct 26 10:02:00 lab-server-1 sshd[1002]: Failed password for invalid user test from 192.0.2.10 port 53015 ssh2
+Oct 26 10:02:30 lab-server-1 sshd[1003]: Failed password for invalid user root from 192.0.2.10 port 53016 ssh2
+Oct 26 10:30:00 lab-server-2 sshd[2000]: Failed password for invalid user svc_test from 198.51.100.5 port 54020 ssh2
+Oct 26 10:30:19 lab-server-2 sshd[2001]: Failed password for invalid user svc_test from 198.51.100.5 port 54021 ssh2
+Oct 26 10:30:39 lab-server-2 sshd[2002]: Failed password for invalid user svc_test from 198.51.100.5 port 54022 ssh2
+Oct 26 10:31:00 lab-server-2 sshd[2010]: Accepted password for svc_test from 198.51.100.5 port 54030 ssh2
+Oct 26 14:30:00 lab-server-7 sshd[3000]: Failed password for invalid user guest from 198.51.100.77 port 60000 ssh2
+Oct 26 14:30:20 lab-server-7 sshd[3001]: Failed password for invalid user guest from 198.51.100.77 port 60001 ssh2
+Oct 26 ??:??:?? lab-server-1 sshd[]: garbled entry no useful fields

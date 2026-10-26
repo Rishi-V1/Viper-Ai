@@ -1,0 +1,111 @@
+{% extends "base.html" %}
+{% block title %}Events — BlueShield{% endblock %}
+{% block content %}
+<h4 class="mb-3">Events explorer</h4>
+
+<div class="row g-2 mb-3">
+  <div class="col-auto"><input id="f-event-type" class="form-control form-control-sm" placeholder="event_type"></div>
+  <div class="col-auto"><input id="f-src-ip" class="form-control form-control-sm" placeholder="src_ip"></div>
+  <div class="col-auto"><input id="f-dest-ip" class="form-control form-control-sm" placeholder="dest_ip"></div>
+  <div class="col-auto"><input id="f-host" class="form-control form-control-sm" placeholder="host_id"></div>
+  <div class="col-auto flex-grow-1"><input id="f-search" class="form-control form-control-sm" placeholder="search signature/username…"></div>
+  <div class="col-auto"><button class="btn btn-sm btn-primary" id="apply-filters">Filter</button></div>
+</div>
+
+<div id="loading" class="text-muted">Loading events…</div>
+<div id="empty-state" class="alert alert-secondary d-none">No events found for this filter.</div>
+
+<div class="table-responsive d-none" id="table-wrap">
+  <table class="table table-sm table-hover">
+    <thead><tr><th>Time</th><th>Source</th><th>Type</th><th>Src → Dest</th><th>Host</th><th>User</th><th>Severity</th></tr></thead>
+    <tbody id="rows"></tbody>
+  </table>
+  <nav class="d-flex justify-content-between align-items-center">
+    <span class="small text-muted" id="page-info"></span>
+    <div>
+      <button class="btn btn-sm btn-outline-secondary" id="prev-page">&laquo; Prev</button>
+      <button class="btn btn-sm btn-outline-secondary" id="next-page">Next &raquo;</button>
+    </div>
+  </nav>
+</div>
+
+<div class="modal fade" id="raw-event-modal" tabindex="-1">
+  <div class="modal-dialog modal-lg">
+    <div class="modal-content">
+      <div class="modal-header"><h6 class="modal-title">Raw normalized event</h6>
+        <button type="button" class="btn-close" data-bs-dismiss="modal"></button></div>
+      <div class="modal-body"><pre id="raw-event-body" class="small"></pre></div>
+    </div>
+  </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+let offset = 0;
+const limit = 25;
+
+function currentFilters() {
+  const params = new URLSearchParams();
+  params.set("limit", limit);
+  params.set("offset", offset);
+  const map = { event_type: "f-event-type", src_ip: "f-src-ip", dest_ip: "f-dest-ip", host_id: "f-host", search: "f-search" };
+  for (const [key, id] of Object.entries(map)) {
+    const value = document.getElementById(id).value.trim();
+    if (value) params.set(key, value);
+  }
+  return params;
+}
+
+async function loadEvents() {
+  let data;
+  try {
+    data = await apiGet("/api/events?" + currentFilters().toString());
+  } catch (e) {
+    showToast("Failed to load events: " + e.message, true);
+    return;
+  }
+  document.getElementById("loading").classList.add("d-none");
+
+  if (data.events.length === 0) {
+    document.getElementById("empty-state").classList.remove("d-none");
+    document.getElementById("table-wrap").classList.add("d-none");
+    return;
+  }
+  document.getElementById("empty-state").classList.add("d-none");
+  document.getElementById("table-wrap").classList.remove("d-none");
+
+  const rows = document.getElementById("rows");
+  rows.innerHTML = "";
+  for (const e of data.events) {
+    const tr = document.createElement("tr");
+    tr.style.cursor = "pointer";
+    tr.onclick = () => {
+      document.getElementById("raw-event-body").textContent = JSON.stringify(e, null, 2);
+      new bootstrap.Modal(document.getElementById("raw-event-modal")).show();
+    };
+    tr.innerHTML = `
+      <td class="small">${new Date(e.timestamp).toLocaleString()}</td>
+      <td class="small">${escapeHtml(e.source_type)}</td>
+      <td class="small">${escapeHtml(e.event_type)}</td>
+      <td class="small">${escapeHtml(e.src_ip || "-")} &rarr; ${escapeHtml(e.dest_ip || "-")}</td>
+      <td class="small">${escapeHtml(e.host_id || "-")}</td>
+      <td class="small">${escapeHtml(e.username || "-")}</td>
+      <td class="small">${e.severity}</td>
+    `;
+    rows.appendChild(tr);
+  }
+
+  document.getElementById("page-info").textContent =
+    `${offset + 1}-${Math.min(offset + limit, data.total)} of ${data.total}`;
+  document.getElementById("prev-page").disabled = offset === 0;
+  document.getElementById("next-page").disabled = offset + limit >= data.total;
+}
+
+document.getElementById("apply-filters").addEventListener("click", () => { offset = 0; loadEvents(); });
+document.getElementById("prev-page").addEventListener("click", () => { offset = Math.max(0, offset - limit); loadEvents(); });
+document.getElementById("next-page").addEventListener("click", () => { offset += limit; loadEvents(); });
+
+loadEvents();
+</script>
+{% endblock %}

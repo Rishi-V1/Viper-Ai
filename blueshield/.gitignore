@@ -1,0 +1,13 @@
+__pycache__/
+*.pyc
+.venv/
+venv/
+.env
+data/blueshield.db
+data/generated/*.json
+!data/generated/.gitkeep
+reports/*.md
+reports/*.html
+!reports/.gitkeep
+.pytest_cache/
+.DS_Store

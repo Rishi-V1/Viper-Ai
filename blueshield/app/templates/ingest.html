@@ -1,0 +1,85 @@
+{% extends "base.html" %}
+{% block title %}Ingest — BlueShield{% endblock %}
+{% block content %}
+<h4 class="mb-3">Upload / Ingest</h4>
+
+<div class="row g-3">
+  <div class="col-md-6">
+    <div class="card"><div class="card-body">
+      <h6 class="card-title">Load demo data</h6>
+      <p class="small text-muted">Loads the bundled synthetic Suricata eve.json + SSH auth.log sample (spec section 13 scenarios).</p>
+      <button class="btn btn-primary" id="load-demo">Load demo data</button>
+      <button class="btn btn-outline-secondary ms-2" id="run-correlation">Run correlation after load</button>
+      <div id="demo-loading" class="spinner-border spinner-border-sm ms-2 d-none"></div>
+    </div></div>
+  </div>
+
+  <div class="col-md-6">
+    <div class="card"><div class="card-body">
+      <h6 class="card-title">Upload a sample log file</h6>
+      <p class="small text-muted">Accepted: .json (Suricata eve.json) or .log/.txt (SSH auth log), up to the configured size limit.</p>
+      <form id="upload-form">
+        <input type="file" class="form-control form-control-sm mb-2" id="upload-file" accept=".json,.log,.txt" required>
+        <button type="submit" class="btn btn-primary">Upload and ingest</button>
+      </form>
+    </div></div>
+  </div>
+</div>
+
+<div class="card mt-3 d-none" id="result-card">
+  <div class="card-body">
+    <h6 class="card-title">Ingest result</h6>
+    <pre id="result-body" class="small"></pre>
+  </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+function renderResult(result) {
+  document.getElementById("result-card").classList.remove("d-none");
+  document.getElementById("result-body").textContent = JSON.stringify(result, null, 2);
+}
+
+document.getElementById("load-demo").addEventListener("click", async () => {
+  document.getElementById("demo-loading").classList.remove("d-none");
+  try {
+    const result = await apiPostJson("/api/ingest/sample", {});
+    renderResult(result);
+    showToast(`Loaded ${result.inserted} events`);
+  } catch (e) {
+    showToast("Ingest failed: " + e.message, true);
+  } finally {
+    document.getElementById("demo-loading").classList.add("d-none");
+  }
+});
+
+document.getElementById("run-correlation").addEventListener("click", async () => {
+  try {
+    const result = await apiPostJson("/api/correlation/run", {});
+    showToast(`Correlation run: ${result.created} created, ${result.updated} updated`);
+  } catch (e) {
+    showToast("Correlation run failed: " + e.message, true);
+  }
+});
+
+document.getElementById("upload-form").addEventListener("submit", async (ev) => {
+  ev.preventDefault();
+  const fileInput = document.getElementById("upload-file");
+  if (!fileInput.files.length) return;
+
+  const formData = new FormData();
+  formData.append("file", fileInput.files[0]);
+
+  try {
+    const res = await fetch("/api/ingest/upload", { method: "POST", body: formData });
+    const result = await res.json();
+    if (!res.ok) throw new Error(result.detail || "upload failed");
+    renderResult(result);
+    showToast(`Uploaded: ${result.inserted} events ingested`);
+  } catch (e) {
+    showToast("Upload failed: " + e.message, true);
+  }
+});
+</script>
+{% endblock %}

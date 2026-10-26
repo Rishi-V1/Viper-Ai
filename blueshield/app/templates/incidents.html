@@ -1,0 +1,116 @@
+{% extends "base.html" %}
+{% block title %}Incidents — BlueShield{% endblock %}
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-3">
+  <h4 class="mb-0">Incidents</h4>
+  <button class="btn btn-sm btn-primary" id="run-correlation">Run correlation now</button>
+</div>
+
+<div class="row g-2 mb-3">
+  <div class="col-auto">
+    <select id="filter-status" class="form-select form-select-sm">
+      <option value="">All statuses</option>
+      <option>New</option><option>Investigating</option><option>Contained</option><option>Closed</option>
+    </select>
+  </div>
+  <div class="col-auto">
+    <select id="filter-severity" class="form-select form-select-sm">
+      <option value="">All severities</option>
+      <option>Critical</option><option>High</option><option>Low</option><option>Informational</option>
+    </select>
+  </div>
+  <div class="col-auto">
+    <select id="sort" class="form-select form-select-sm">
+      <option value="severity_desc">Severity (high to low)</option>
+      <option value="severity_asc">Severity (low to high)</option>
+      <option value="first_seen_desc">Newest first</option>
+      <option value="first_seen_asc">Oldest first</option>
+    </select>
+  </div>
+  <div class="col-auto flex-grow-1">
+    <input id="search" class="form-control form-control-sm" placeholder="Search title / rationale…">
+  </div>
+</div>
+
+<div id="loading" class="text-muted">Loading incidents…</div>
+<div id="empty-state" class="alert alert-secondary d-none">No incidents yet. Ingest data and run correlation first.</div>
+
+<div class="table-responsive d-none" id="table-wrap">
+  <table class="table table-sm table-hover align-middle">
+    <thead>
+      <tr><th>Title</th><th>First seen</th><th>Last seen</th><th>Severity</th><th>Confidence</th><th>Rule fired</th><th># Events</th><th>Status</th></tr>
+    </thead>
+    <tbody id="rows"></tbody>
+  </table>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+async function loadIncidents() {
+  const params = new URLSearchParams();
+  const status = document.getElementById("filter-status").value;
+  const severity = document.getElementById("filter-severity").value;
+  const sort = document.getElementById("sort").value;
+  const search = document.getElementById("search").value;
+  if (status) params.set("status", status);
+  if (severity) params.set("severity_label", severity);
+  if (search) params.set("search", search);
+  params.set("sort", sort);
+
+  let data;
+  try {
+    data = await apiGet("/api/incidents?" + params.toString());
+  } catch (e) {
+    showToast("Failed to load incidents: " + e.message, true);
+    return;
+  }
+
+  document.getElementById("loading").classList.add("d-none");
+  const incidents = data.incidents;
+
+  if (incidents.length === 0) {
+    document.getElementById("empty-state").classList.remove("d-none");
+    document.getElementById("table-wrap").classList.add("d-none");
+    return;
+  }
+  document.getElementById("empty-state").classList.add("d-none");
+  document.getElementById("table-wrap").classList.remove("d-none");
+
+  const rows = document.getElementById("rows");
+  rows.innerHTML = "";
+  for (const inc of incidents) {
+    const tr = document.createElement("tr");
+    tr.style.cursor = "pointer";
+    tr.onclick = () => { window.location.href = `/incidents/${inc.incident_id}`; };
+    tr.innerHTML = `
+      <td>${escapeHtml(inc.title)}</td>
+      <td class="small">${new Date(inc.first_seen).toLocaleString()}</td>
+      <td class="small">${new Date(inc.last_seen).toLocaleString()}</td>
+      <td>${severityBadge(inc.severity_label)} <span class="small text-muted">${inc.severity}/100</span></td>
+      <td>${confidenceBadge(inc.confidence)}</td>
+      <td class="small">${inc.rule_fired}</td>
+      <td>${inc.supporting_event_count}</td>
+      <td>${statusBadge(inc.status)}</td>
+    `;
+    rows.appendChild(tr);
+  }
+}
+
+document.getElementById("filter-status").addEventListener("change", loadIncidents);
+document.getElementById("filter-severity").addEventListener("change", loadIncidents);
+document.getElementById("sort").addEventListener("change", loadIncidents);
+document.getElementById("search").addEventListener("input", () => { clearTimeout(window._t); window._t = setTimeout(loadIncidents, 300); });
+document.getElementById("run-correlation").addEventListener("click", async () => {
+  try {
+    const result = await apiPostJson("/api/correlation/run", {});
+    showToast(`Correlation run: ${result.created} created, ${result.updated} updated`);
+    loadIncidents();
+  } catch (e) {
+    showToast("Correlation run failed: " + e.message, true);
+  }
+});
+
+loadIncidents();
+</script>
+{% endblock %}

@@ -1,0 +1,112 @@
+{% extends "base.html" %}
+{% block title %}Evaluation — BlueShield{% endblock %}
+{% block content %}
+<h4 class="mb-3">Evaluation</h4>
+<p class="small text-muted">Runs the parser + correlation pipeline against the bundled labelled scenarios (spec section 13) and checks results against ground truth. Independent of the live database.</p>
+
+<div id="loading" class="text-muted">Running evaluation…</div>
+
+<div id="content" class="d-none">
+  <div class="alert alert-info small" id="caveat"></div>
+
+  <div class="row g-3 mb-3">
+    <div class="col-6 col-md-3"><div class="card text-center"><div class="card-body">
+      <div class="text-muted small">Precision</div><div class="fs-4 fw-semibold" id="precision">—</div>
+    </div></div></div>
+    <div class="col-6 col-md-3"><div class="card text-center"><div class="card-body">
+      <div class="text-muted small">Recall</div><div class="fs-4 fw-semibold" id="recall">—</div>
+    </div></div></div>
+    <div class="col-6 col-md-3"><div class="card text-center"><div class="card-body">
+      <div class="text-muted small">False positive rate</div><div class="fs-4 fw-semibold" id="fpr">—</div>
+    </div></div></div>
+    <div class="col-6 col-md-3"><div class="card text-center"><div class="card-body">
+      <div class="text-muted small">Processing latency</div><div class="fs-4 fw-semibold" id="latency">—</div>
+    </div></div></div>
+  </div>
+
+  <div class="card mb-3"><div class="card-body">
+    <h6 class="card-title">Confusion matrix (correlation linking)</h6>
+    <table class="table table-sm" style="max-width: 420px;">
+      <tbody id="confusion-matrix"></tbody>
+    </table>
+  </div></div>
+
+  <div class="card mb-3"><div class="card-body">
+    <h6 class="card-title">Per-scenario results</h6>
+    <table class="table table-sm">
+      <thead><tr><th>Scenario</th><th>Description</th><th>Result</th><th>Detail</th></tr></thead>
+      <tbody id="scenario-rows"></tbody>
+    </table>
+  </div></div>
+
+  <div class="card mb-3"><div class="card-body">
+    <h6 class="card-title">LLM output evaluation</h6>
+    <div id="llm-eval"></div>
+  </div></div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+const RESULT_BADGE = {
+  true_positive: "bg-success", true_negative: "bg-success", pass: "bg-success",
+  false_negative: "bg-danger", false_positive: "bg-danger", fail: "bg-danger",
+};
+
+function pct(x) { return x === null || x === undefined ? "—" : (x * 100).toFixed(0) + "%"; }
+
+async function loadEvaluation() {
+  let data;
+  try {
+    data = await apiGet("/api/evaluation");
+  } catch (e) {
+    showToast("Evaluation failed: " + e.message, true);
+    return;
+  }
+  document.getElementById("loading").classList.add("d-none");
+  document.getElementById("content").classList.remove("d-none");
+
+  document.getElementById("caveat").textContent = data.caveat;
+  document.getElementById("precision").textContent = pct(data.precision);
+  document.getElementById("recall").textContent = pct(data.recall);
+  document.getElementById("fpr").textContent = pct(data.false_positive_rate);
+  document.getElementById("latency").textContent = data.processing_latency_ms + " ms";
+
+  const cm = data.confusion_matrix;
+  document.getElementById("confusion-matrix").innerHTML = `
+    <tr><td>True positives</td><td class="text-end">${cm.true_positive}</td></tr>
+    <tr><td>False negatives</td><td class="text-end">${cm.false_negative}</td></tr>
+    <tr><td>False positives</td><td class="text-end">${cm.false_positive}</td></tr>
+    <tr><td>True negatives</td><td class="text-end">${cm.true_negative}</td></tr>
+  `;
+
+  const rows = document.getElementById("scenario-rows");
+  rows.innerHTML = "";
+  for (const s of data.scenario_results) {
+    const badge = RESULT_BADGE[s.result] || "bg-secondary";
+    rows.innerHTML += `<tr>
+      <td class="small">${escapeHtml(s.id)}</td>
+      <td class="small">${escapeHtml(s.description)}</td>
+      <td><span class="badge ${badge}">${escapeHtml(s.result)}</span></td>
+      <td class="small text-muted">${escapeHtml(s.detail || "")}</td>
+    </tr>`;
+  }
+
+  const llmEval = document.getElementById("llm-eval");
+  if (data.llm_evaluation.total_analyses === 0) {
+    llmEval.innerHTML = `<p class="small text-muted mb-0">${escapeHtml(data.llm_evaluation.note)}</p>`;
+  } else {
+    const le = data.llm_evaluation;
+    let html = `<p class="small">Total analyses: ${le.total_analyses} · Overall validity: ${pct(le.overall_validity_rate)} · Avg latency: ${le.overall_avg_latency_ms.toFixed(0)}ms</p>`;
+    html += `<table class="table table-sm"><thead><tr><th>Model</th><th>Analyses</th><th>Validity rate</th><th>Avg latency</th></tr></thead><tbody>`;
+    for (const m of le.per_model) {
+      html += `<tr><td class="small">${escapeHtml(m.model_tag)}</td><td>${m.total_analyses}</td><td>${pct(m.validity_rate)}</td><td>${m.avg_latency_ms.toFixed(0)}ms</td></tr>`;
+    }
+    html += `</tbody></table><p class="small text-muted mb-0">${escapeHtml(le.note)}</p>`;
+    llmEval.innerHTML = html;
+  }
+}
+
+loadEvaluation();
+</script>
+{% endblock %}

@@ -1,0 +1,99 @@
+:root {
+  --bs-body-bg: #0d1117;
+  --bs-body-color: #e6edf3;
+  --gold: #c9a227;
+  --gold-light: #e9cf6b;
+  --gold-dark: #8a6d1a;
+}
+
+/* White & gold theme (the default look) */
+[data-bs-theme="light"] {
+  --bs-body-bg: #ffffff;
+  --bs-body-color: #2b2410;
+  --bs-border-color: #e8dcb0;
+  --bs-link-color: var(--gold-dark);
+  --bs-link-hover-color: var(--gold);
+  --bs-primary: var(--gold-dark);
+  --bs-primary-rgb: 138, 109, 26;
+}
+
+body {
+  background-color: var(--bs-body-bg);
+}
+
+.bs-navbar {
+  background-color: rgba(13, 17, 23, 0.6);
+  border-bottom: 2px solid var(--gold);
+}
+
+[data-bs-theme="light"] .bs-navbar {
+  background: repeating-linear-gradient(
+    135deg,
+    #ffffff,
+    #ffffff 18px,
+    #fbf3dc 18px,
+    #fbf3dc 22px
+  );
+  border-bottom: 3px solid var(--gold);
+}
+
+[data-bs-theme="light"] .navbar-brand,
+[data-bs-theme="light"] .nav-link {
+  color: #3a2f0b !important;
+}
+
+[data-bs-theme="light"] .nav-link:hover {
+  color: var(--gold-dark) !important;
+}
+
+[data-bs-theme="light"] .card {
+  background-color: #fffdf6;
+  border: 1px solid #e8dcb0;
+}
+
+[data-bs-theme="light"] .btn-primary {
+  background-color: var(--gold-dark);
+  border-color: var(--gold-dark);
+  color: #fff;
+}
+
+[data-bs-theme="light"] .btn-primary:hover {
+  background-color: var(--gold);
+  border-color: var(--gold);
+}
+
+[data-bs-theme="light"] .btn-outline-primary,
+[data-bs-theme="light"] .btn-outline-secondary {
+  color: var(--gold-dark);
+  border-color: var(--gold-dark);
+}
+
+[data-bs-theme="light"] .btn-outline-primary:hover,
+[data-bs-theme="light"] .btn-outline-secondary:hover {
+  background-color: var(--gold-dark);
+  border-color: var(--gold-dark);
+  color: #fff;
+}
+
+[data-bs-theme="light"] footer {
+  background: repeating-linear-gradient(
+    135deg,
+    #ffffff,
+    #ffffff 18px,
+    #fbf3dc 18px,
+    #fbf3dc 22px
+  );
+  border-top: 2px solid var(--gold) !important;
+}
+
+/* Severity colors are fixed by spec (Critical=red, High=orange, Low=yellow,
+   Informational=blue) and stay the same in every theme. */
+.severity-critical { color: #ff5c5c; }
+.severity-high { color: #ff9f40; }
+.severity-low { color: #ffd84d; }
+.severity-info { color: #4da3ff; }
+
+.badge-critical { background-color: #b02a2a; }
+.badge-high { background-color: #b3691a; }
+.badge-low { background-color: #b39a1a; color: #1a1a1a; }
+.badge-info { background-color: #1a5fb3; }

@@ -1,0 +1,93 @@
+{% extends "base.html" %}
+{% block title %}Settings — BlueShield{% endblock %}
+{% block content %}
+<h4 class="mb-3">Settings</h4>
+<p class="small text-muted">Changes apply immediately to the next correlation run / score calculation — no restart needed.</p>
+
+<div class="card" style="max-width: 640px;">
+  <div class="card-body">
+    <form id="settings-form">
+      <h6>Correlation</h6>
+      <div class="mb-2">
+        <label class="form-label small">Correlation time window (minutes)</label>
+        <input type="number" class="form-control form-control-sm" id="correlation_time_window_minutes" min="1">
+      </div>
+      <div class="mb-3">
+        <label class="form-label small">Duplicate-alert clustering window (seconds)</label>
+        <input type="number" class="form-control form-control-sm" id="dedup_window_seconds" min="1">
+      </div>
+
+      <h6>Risk thresholds (0–100)</h6>
+      <div class="row g-2 mb-3">
+        <div class="col-4"><label class="form-label small">Low ≥</label><input type="number" class="form-control form-control-sm" id="risk_threshold_low"></div>
+        <div class="col-4"><label class="form-label small">High ≥</label><input type="number" class="form-control form-control-sm" id="risk_threshold_high"></div>
+        <div class="col-4"><label class="form-label small">Critical ≥</label><input type="number" class="form-control form-control-sm" id="risk_threshold_critical"></div>
+      </div>
+
+      <h6>Scoring weights</h6>
+      <div class="row g-2 mb-3">
+        <div class="col-6"><label class="form-label small">Severity points / unit</label><input type="number" class="form-control form-control-sm" id="severity_points_per_unit"></div>
+        <div class="col-6"><label class="form-label small">Multi-stage sequence bonus</label><input type="number" class="form-control form-control-sm" id="sequence_bonus"></div>
+      </div>
+
+      <h6>Local LLM (Ollama)</h6>
+      <div class="form-check form-switch mb-2">
+        <input class="form-check-input" type="checkbox" id="llm_enabled">
+        <label class="form-check-label small" for="llm_enabled">Enable LLM-assisted analysis</label>
+      </div>
+      <div class="mb-2">
+        <label class="form-label small">Primary model tag</label>
+        <input type="text" class="form-control form-control-sm" id="ollama_model_primary">
+      </div>
+      <div class="mb-3">
+        <label class="form-label small">Secondary model tag</label>
+        <input type="text" class="form-control form-control-sm" id="ollama_model_secondary">
+      </div>
+
+      <button type="submit" class="btn btn-primary">Save settings</button>
+    </form>
+  </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+const FIELDS = [
+  "correlation_time_window_minutes", "dedup_window_seconds",
+  "risk_threshold_low", "risk_threshold_high", "risk_threshold_critical",
+  "severity_points_per_unit", "sequence_bonus",
+  "ollama_model_primary", "ollama_model_secondary",
+];
+
+async function loadSettings() {
+  let settings;
+  try {
+    settings = await apiGet("/api/settings");
+  } catch (e) {
+    showToast("Failed to load settings: " + e.message, true);
+    return;
+  }
+  for (const field of FIELDS) {
+    document.getElementById(field).value = settings[field];
+  }
+  document.getElementById("llm_enabled").checked = !!settings.llm_enabled;
+}
+
+document.getElementById("settings-form").addEventListener("submit", async (ev) => {
+  ev.preventDefault();
+  const payload = { llm_enabled: document.getElementById("llm_enabled").checked };
+  for (const field of FIELDS) {
+    const el = document.getElementById(field);
+    payload[field] = el.type === "number" ? Number(el.value) : el.value;
+  }
+  try {
+    await apiPostJson("/api/settings", payload);
+    showToast("Settings saved");
+  } catch (e) {
+    showToast("Failed to save settings: " + e.message, true);
+  }
+});
+
+loadSettings();
+</script>
+{% endblock %}

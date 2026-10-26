@@ -1,0 +1,70 @@
+{
+  "generated_at": "2026-10-26T17:42:47.118190+00:00",
+  "scenarios": [
+    {
+      "id": "scenario_1_portscan_to_ssh_failures",
+      "description": "Port scan followed by repeated SSH failures, same source/dest/host within window.",
+      "expected_correlation": true,
+      "match": {
+        "src_ip": "192.0.2.10",
+        "host_id": "lab-server-1"
+      },
+      "min_linked_events": 5
+    },
+    {
+      "id": "scenario_2_failures_then_success",
+      "description": "SSH failures followed by a successful login for the same account/host.",
+      "expected_correlation": true,
+      "match": {
+        "src_ip": "198.51.100.5",
+        "host_id": "lab-server-2",
+        "username": "svc_test"
+      },
+      "min_linked_events": 4
+    },
+    {
+      "id": "scenario_3_benign_high_volume_transfer",
+      "description": "Large outbound transfer that should be flagged but kept low-confidence, not treated as confirmed exfiltration.",
+      "expected_correlation": false,
+      "match": {
+        "src_ip": "192.0.2.30",
+        "dest_ip": "203.0.113.9"
+      },
+      "min_linked_events": 1
+    },
+    {
+      "id": "scenario_4_duplicate_alerts",
+      "description": "Four duplicate scan alerts that should deduplicate into one event record with count=4.",
+      "expected_correlation": false,
+      "match": {
+        "src_ip": "198.51.100.10",
+        "dest_ip": "198.51.100.20"
+      },
+      "expected_duplicate_count": 4
+    },
+    {
+      "id": "scenario_5_unrelated_events",
+      "description": "A port scan and a separate, later SSH-failure pair on unrelated hosts; must not be linked together.",
+      "expected_correlation": false,
+      "unrelated_pair": [
+        {
+          "src_ip": "203.0.113.50",
+          "dest_ip": "203.0.113.60"
+        },
+        {
+          "src_ip": "198.51.100.77",
+          "host_id": "lab-server-7"
+        }
+      ]
+    },
+    {
+      "id": "scenario_6_model_hallucination_check",
+      "description": "Minimal-evidence DNS anomaly with no username/login outcome/malware ID, for LLM-output validation tests.",
+      "expected_correlation": false,
+      "match": {
+        "src_ip": "192.0.2.40",
+        "dest_ip": "203.0.113.100"
+      }
+    }
+  ]
+}
